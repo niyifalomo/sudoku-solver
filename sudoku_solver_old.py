@@ -77,67 +77,37 @@ class Sudoku:
         Constraint Propagation
         :return:
         """
-
         def remove_value(square, value):
-            '''
-            removes value from a square's domain and from the square's domain
-            :param square:
-            :param value:
-            :return:
-            '''
-            # if value is not yet removed
             if value in self.values[square]:
                 self.values[square] = self.values[square].replace(value, '')
                 if len(self.values[square]) == 1:
-                    self.grid[square] = self.values[square]
                     for peer in self.peers[square]:
                         remove_value(peer, self.values[square])
-            return
 
-        for square, value in self.grid.items():
-            if value in self.digits:
-                # get remaining values in square's domain
-                remaining_values = self.values[square].replace(value, '')
-                # remove the remaining values from the square's domain and its peers
+                for unit in self.units[square]:
+                    possible_placements = [square for square in unit if value in self.values[square]]
+                    if len(possible_placements) == 1:
+                        self.grid[possible_placements[0]] = value
+                        other_values = self.values[possible_placements[0]].replace(value, '')
+                        for other_value in other_values:
+                            remove_value(possible_placements[0], other_value)
+
+
+        for square, digit in self.grid.items():
+            if digit in self.digits:
+                remaining_values = self.values[square].replace(digit, '')
                 for other_value in remaining_values:
                     remove_value(square, other_value)
 
-        # update grid
-        #self.grid = self.values
-
         return self.values
+
 
     # return self.values
     def search(self, values):
-        if all(v != '0' for s, v in self.grid.items()):
-            return True  # sudoku is solved
-
-        # get the next unassigned square
-
-        unassigned_squares = [s for s,v in self.grid.items() if v =='' or v== '0']
-
-        #get the next unassigned square using minimum remaining values heuristic
-
-        #unassigned_squares = sorted(self.values.items(),key=lambda x:len(x[1]))
-
-        next_unassigned_square = unassigned_squares[0]
-        for i in self.digits:
-
-            # check if i can be assigned to the square
-            occurence_in_unit = 0
-            for unit in self.units[next_unassigned_square]:
-                occurence_in_unit = len([square for square in unit if i in self.grid[square]])
-            if occurence_in_unit == 0:
-                self.grid[next_unassigned_square] = i
-                #old_domain = self.values[next_unassigned_square]
-                #self.values[next_unassigned_square] = i
-                # backtrack
-                if self.search(self.grid.items()):
-                    return True
-                self.grid[next_unassigned_square] = '0'
-
-
-        return False
+        """
+            TODO: Code the Backtracking Search Technique Here
+        """
+        return values
 
 
 def main():
