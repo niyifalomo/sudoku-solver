@@ -75,24 +75,23 @@ class Sudoku:
     def propagate(self):
         """
         Constraint Propagation
-        :return:
         """
 
-        def remove_value(square, value):
+        def propagate_constraints(square, value):
             '''
-            removes value from a square's domain and from the square's domain
-            :param square:
-            :param value:
-            :return:
+            removes value from a square's domain and from the square's peers
             '''
-            # if value is not yet removed
-            if value in self.values[square]:
-                self.values[square] = self.values[square].replace(value, '')
-                if len(self.values[square]) == 1:
-                    self.grid[square] = self.values[square]
-                    for peer in self.peers[square]:
-                        remove_value(peer, self.values[square])
-            return
+            # if value value has already being removed, don't propagate constraints
+            if value not in self.values[square]:
+                return
+            # remove value from square's domain
+            self.values[square] = self.values[square].replace(value, '')
+
+            # if square's domain is reduced to one digit, remove the domain value from its peers
+            if len(self.values[square]) == 1:
+                self.grid[square] = self.values[square]
+                for peer in self.peers[square]:
+                    propagate_constraints(peer, self.values[square])
 
         for square, value in self.grid.items():
             if value in self.digits:
@@ -100,44 +99,69 @@ class Sudoku:
                 remaining_values = self.values[square].replace(value, '')
                 # remove the remaining values from the square's domain and its peers
                 for other_value in remaining_values:
-                    remove_value(square, other_value)
-
-        # update grid
-        #self.grid = self.values
+                    propagate_constraints(square, other_value)
 
         return self.values
 
     # return self.values
     def search(self, values):
-        if all(v != '0' for s, v in self.grid.items()):
-            return True  # sudoku is solved
 
-        # get the next unassigned square
+        # check if sudoku puzzle is already solved
+        if all(len(v) == 1 for s, v in self.values.items()):
+            return True
 
-        unassigned_squares = [s for s,v in self.grid.items() if v =='' or v== '0']
+        # get next blank square using minimum remaining values heuristic
+        next_blank_square = self.get_square_with_minimum_remaining_possible_values()
 
-        #get the next unassigned square using minimum remaining values heuristic
+        # get current values
+        current_grid_value = self.grid[next_blank_square]
+        current_domain = self.values[next_blank_square]
 
-        #unassigned_squares = sorted(self.values.items(),key=lambda x:len(x[1]))
+        for i in self.values[next_blank_square]:
 
-        next_unassigned_square = unassigned_squares[0]
-        for i in self.digits:
+            # check if i can be assigned to the square's units
+            if self.is_allowed_in_square(next_blank_square, i):
 
-            # check if i can be assigned to the square
-            occurence_in_unit = 0
-            for unit in self.units[next_unassigned_square]:
-                occurence_in_unit = len([square for square in unit if i in self.grid[square]])
-            if occurence_in_unit == 0:
-                self.grid[next_unassigned_square] = i
-                #old_domain = self.values[next_unassigned_square]
-                #self.values[next_unassigned_square] = i
-                # backtrack
-                if self.search(self.grid.items()):
-                    return True
-                self.grid[next_unassigned_square] = '0'
+                # update values
+                self.grid[next_blank_square] = i
+                self.values[next_blank_square] = i
 
+                # check if sudoku has been solved
+                if self.search(self.values.items()):
+                    return self.values
+
+                # reset values to current , if solution is not found
+                self.grid[next_blank_square] = current_grid_value
+                self.values[next_blank_square] = current_domain
 
         return False
+
+    def get_square_with_minimum_remaining_possible_values(self):
+
+        #  get the next unassigned square using minimum remaining values heuristic
+        blank_squares = {s: len(self.values[s]) for s in [s for s, v in self.grid.items() if v not in self.digits]}
+
+        # sort blank cells based on the number of domain values
+        blank_squares = sorted(blank_squares.items(), key=lambda x: x[1])
+        # get the square with the lowest number of domain values
+        next_blank_square = blank_squares[0][0]
+
+        return next_blank_square
+
+    def is_allowed_in_square(self, square, value):
+        '''
+        Checks if value can be placed in square. Checks if value is in any other square in square's (param) unit
+        :param square:
+        :param value:
+        :return: True if value is not in square's unit, else returns false
+        '''
+
+        count = 0
+        for unit in self.units[square]:
+            count += len([square for square in unit if value in self.grid[square]])
+        if count > 0:
+            return False
+        return True
 
 
 def main():
