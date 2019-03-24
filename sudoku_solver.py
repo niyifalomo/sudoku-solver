@@ -51,6 +51,7 @@ class Sudoku:
             are in the form '[A-I][1-9]' (e.g., 'E5').
         """
         grid = ''
+
         with open(filename) as f:
             grid = ''.join(f.readlines())
         grid_values = self.grid_values(grid)
@@ -74,24 +75,25 @@ class Sudoku:
 
     def propagate(self):
         """
-        Constraint Propagation
+        Constraint Propagation using Forward Checking
         """
 
-        def propagate_constraints(square, value):
-            '''
+        def propagate_constraints(_square, _value):
+            """
             removes value from a square's domain and from the square's peers
-            '''
+            """
             # if value value has already being removed, don't propagate constraints
-            if value not in self.values[square]:
+            if _value not in self.values[_square]:
                 return
-            # remove value from square's domain
-            self.values[square] = self.values[square].replace(value, '')
 
-            # if square's domain is reduced to one digit, remove the domain value from its peers
-            if len(self.values[square]) == 1:
-                self.grid[square] = self.values[square]
-                for peer in self.peers[square]:
-                    propagate_constraints(peer, self.values[square])
+            # remove value from square's domain
+            self.values[_square] = self.values[_square].replace(_value, '')
+
+            # if square's domain is reduced to one digit, remove the domain value from the square's peers
+            if len(self.values[_square]) == 1:
+                self.grid[_square] = self.values[_square]
+                for peer in self.peers[_square]:
+                    propagate_constraints(peer, self.values[_square])
 
         for square, value in self.grid.items():
             if value in self.digits:
@@ -103,8 +105,8 @@ class Sudoku:
 
         return self.values
 
-    # return self.values
     def search(self, values):
+        self.values = values
 
         # check if sudoku puzzle is already solved
         if all(len(v) == 1 for s, v in self.values.items()):
@@ -113,65 +115,69 @@ class Sudoku:
         # get next blank square using minimum remaining values heuristic
         next_blank_square = self.get_square_with_minimum_remaining_possible_values()
 
-        # get current values
-        current_grid_value = self.grid[next_blank_square]
+        # save next_blank_square current domain before changing it
+        # incase we need to restore them
         current_domain = self.values[next_blank_square]
 
-        for i in self.values[next_blank_square]:
+        # attempt to assign each  value from next_blank_square's domain
+        for domain_value in self.values[next_blank_square]:
 
-            # check if i can be assigned to the square's units
-            if self.is_allowed_in_square(next_blank_square, i):
+            # check if domain value can be assigned to the square's units
+            if self.is_allowed_in_square(next_blank_square, domain_value):
 
-                # update values
-                self.grid[next_blank_square] = i
-                self.values[next_blank_square] = i
+                # place value in square
+                self.grid[next_blank_square] = domain_value
+                # update square's domain
+                self.values[next_blank_square] = domain_value
 
                 # check if sudoku has been solved
-                if self.search(self.values.items()):
+                if self.search(self.values):
                     return self.values
 
-                # reset values to current , if solution is not found
-                self.grid[next_blank_square] = current_grid_value
+                # clear assignment
+                self.grid[next_blank_square] = ''
                 self.values[next_blank_square] = current_domain
 
         return False
 
     def get_square_with_minimum_remaining_possible_values(self):
+        """
+            Uses Mininmum Remaining Values heuristic to the get the blank square  with the lowest number
+            of domain values (possible values)
+        :return:
+        """
 
-        #  get the next unassigned square using minimum remaining values heuristic
-        blank_squares = {s: len(self.values[s]) for s in [s for s, v in self.grid.items() if v not in self.digits]}
+        #  get the blank squares
+        blank_squares = {s: len(self.values[s]) for s, v in self.values.items() if len(v) > 1}
 
-        # sort blank cells based on the number of domain values
+        # sort blank squares based on the number of domain values in ascending order
         blank_squares = sorted(blank_squares.items(), key=lambda x: x[1])
-        # get the square with the lowest number of domain values
+        # get the first square in sorted set
         next_blank_square = blank_squares[0][0]
 
         return next_blank_square
 
     def is_allowed_in_square(self, square, value):
-        '''
-        Checks if value can be placed in square. Checks if value is in any other square in square's (param) unit
+        """
+        Checks if value can be placed in square. Checks if value is in any other square peers
         :param square:
         :param value:
         :return: True if value is not in square's unit, else returns false
-        '''
-
-        count = 0
-        for unit in self.units[square]:
-            count += len([square for square in unit if value in self.grid[square]])
-        if count > 0:
-            return False
+        """
+        for peer in self.peers[square]:
+            if peer != square and value in self.grid[peer]:
+                return False
         return True
 
 
 def main():
-    s = Sudoku()
     '''
         The loop reads in as many files as you've passed on the command line.
         Example to read two easy files from the command line:
-            python sudoku_solver.py sudoku_easy1.txt sudoku_easy2.txt
+            python sudoku_solver.py input/sudoku_easy1.txt input/sudoku_easy2.txt
     '''
     for x in range(1, len(sys.argv)):
+        s = Sudoku()
         s.load_file(sys.argv[x])
         print("\n==============================================")
         print(sys.argv[x].center(46))
@@ -180,6 +186,7 @@ def main():
         print("\n----------------------------------------------\n")
         s.solve()
         print(s)
+
 
 
 main()
