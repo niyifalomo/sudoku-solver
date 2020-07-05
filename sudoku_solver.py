@@ -3,9 +3,15 @@ import sys
 
 class Sudoku:
     """
-        Sudoku class, which models a Sudoku game.
+        Sudoku class, which models a Sudoku game. Based on Peter Norvig's Suggested Sudoku setup
 
-        Based on Peter Norvig's Suggested Sudoku setup
+        Uses Constraint Propagation (Forward Checking) and Backtracking using Minimum Remaining Values (MRV) heuristic
+
+        To run:
+        python sudoku_solver.py <sudoku_file_paths>
+        python sudoku_solver.py input/sudoku_easy1.txt input/sudoku_easy2.txt
+
+
     """
 
     def __init__(self):
